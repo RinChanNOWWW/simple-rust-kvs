@@ -1,4 +1,4 @@
-use std::{env::consts::FAMILY, process::exit, unreachable};
+use std::{process::exit, unreachable};
 
 use clap::{App, AppSettings, Arg, ArgMatches};
 
