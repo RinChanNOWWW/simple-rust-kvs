@@ -1,47 +1,53 @@
-use std::{process::exit, unreachable};
+#![allow(unused)]
+use std::{process::exit};
+use clap::{Clap, AppSettings};
 
-use clap::{App, AppSettings, Arg, ArgMatches};
+#[derive(Clap)]
+#[clap(version = env!("CARGO_PKG_VERSION"), setting = AppSettings::DisableHelpSubcommand)]
+struct Opt {
+    #[clap(subcommand)]
+    cmd: Command
 
-fn parse_args() -> ArgMatches {
-    App::new(env!("CARGO_PKG_NAME"))
-        .setting(AppSettings::VersionlessSubcommands)
-        .setting(AppSettings::DisableHelpSubcommand)
-        .version(env!("CARGO_PKG_VERSION"))
-        .author(env!("CARGO_PKG_AUTHORS"))
-        .about(env!("CARGO_PKG_DESCRIPTION"))
-        .subcommand(App::new("set")
-            .about("Set the value of a string key to a string")
-            .arg(Arg::new("KEY")
-                .required(true))
-            .arg(Arg::new("VALUE")
-                .required(true)))
-        .subcommand(App::new("get")
-            .about("Get the string value of a given string key")
-            .arg(Arg::new("KEY")
-                .required(true)))
-        .subcommand(App::new("rm") 
-            .about("Remove a given key")
-            .arg(Arg::new("KEY")
-                .required(true)))
-    .get_matches()
+}
+#[derive(Clap)]
+enum Command {
+    #[clap(name = "set", about = "Set the value of a string key to a string")]
+    Set {
+        #[clap(name = "KEY", required = true, about = "The key")]
+        key: String,
+        #[clap(name = "VALUE", required = true, about = "The value")]
+        value: String,
+    },
+    #[clap(name = "get", about = "Get the string value of a given string key")]
+    Get {
+        #[clap(name = "KEY", required = true, about = "The key")]
+        key: String
+    },
+    #[clap(name = "rm", about = "Remove a given key")]
+    Remove {
+        #[clap(name = "KEY", required = true, about = "The key")]
+        key: String
+    }
 }
 
-fn dispatch(m: ArgMatches) {
-    match m.subcommand_name() {
-        Some("set") => {
+fn parse_args() -> Opt {
+    let opt: Opt = Opt::parse();
+    return opt;
+}
+
+fn dispatch(opt: Opt) {
+    match opt.cmd {
+        Command::Set{key, value}=> {
             eprintln!("unimplemented");
             exit(1);
         },
-        Some("get") => {
+        Command::Get{key} => {
             eprintln!("unimplemented");
             exit(1);
         },
-        Some("rm") => {
+        Command::Remove{key} => {
             eprintln!("unimplemented");
             exit(1);
-        }
-        _ => {
-            unreachable!()
         }
     }
 }
