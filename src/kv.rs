@@ -57,6 +57,7 @@ pub struct KvStore {
     writer: Writer<File>,
 }
 
+#[derive(Debug)]
 struct CommandPos {
     log_id: u64,
     pos: u64,
@@ -76,7 +77,7 @@ impl KvStore {
             uncompacted += load_log(log_id, &mut reader, &mut index_map)?;
             readers.insert(log_id, reader);
         }
-        let log_id = log_list.last().unwrap_or(&0) + 1;
+        let log_id = *log_list.last().unwrap_or(&0);
         let writer = new_log(&path, log_id, &mut readers)?;
 
         Ok(KvStore {
@@ -213,6 +214,7 @@ fn new_log(
             .create(true)
             .write(true)
             .read(true)
+            .append(true)
             .open(&path)?,
     )?;
     readers.insert(log_id, Reader::new(File::open(&path)?)?);
@@ -295,7 +297,7 @@ struct Writer<W: Write + Seek> {
 
 impl<W: Write + Seek> Writer<W> {
     fn new(mut inner: W) -> Result<Self> {
-        let pos = inner.seek(SeekFrom::Current(0))?;
+        let pos = inner.seek(SeekFrom::End(0))?;
         Ok(Writer {
             writer: BufWriter::new(inner),
             pos,
