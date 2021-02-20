@@ -150,6 +150,38 @@ impl KvStore {
     }
 
     fn compact(&mut self) -> Result<()> {
+        let new_log_id = self.log_id + 1;
+        self.log_id += 2;
+        self.writer = new_log(&self.path, self.log_id, &mut self.readers)?;
+        let mut compaction_writer = new_log(&self.path, new_log_id, &mut self.readers)?;
+        let mut cur = 0u64;
+        for cmd_pos in &mut self.index_map.values_mut() {
+            if let Some(reader) = self.readers.get_mut(&cmd_pos.log_id) {
+                if reader.pos != cmd_pos.pos {
+                    reader.seek(SeekFrom::Start(cmd_pos.pos))?;
+                }
+                let mut kv_reader = reader.take(cmd_pos.len);
+                let len = io::copy(&mut kv_reader, &mut compaction_writer)?;
+                *cmd_pos = CommandPos {
+                    log_id: new_log_id,
+                    pos: cur,
+                    len,
+                };
+                cur += len;
+            }
+        }
+        compaction_writer.flush()?;
+        let depreacted_logs: Vec<u64> = self
+            .readers
+            .keys()
+            .filter(|log| **log < new_log_id)
+            .cloned()
+            .collect();
+        for log in depreacted_logs {
+            self.readers.remove(&log);
+            fs::remove_file(get_log_path(&self.path, log))?;
+        }
+        self.uncompacted = 0;
         Ok(())
     }
 }
