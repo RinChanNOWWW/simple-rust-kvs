@@ -1,4 +1,4 @@
-use failure::Fail;
+use crate::{KvsError, Result};
 use io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write};
 use serde::{Deserialize, Serialize};
 use std::ffi::OsStr;
@@ -7,32 +7,9 @@ use std::{
     fs,
     fs::{File, OpenOptions},
     path::PathBuf,
-    result,
 };
 
 const THRESHOLD: u64 = 1024;
-
-#[derive(Debug, Fail)]
-pub enum KvStoreError {
-    #[fail(display = "Open kv file error: {}", _0)]
-    IoError(io::Error),
-    #[fail(display = "Key not found")]
-    KeyNotFound,
-    #[fail(display = "(De)serialization error: {}", _0)]
-    SerDeError(serde_json::Error),
-}
-
-impl From<io::Error> for KvStoreError {
-    fn from(e: io::Error) -> Self {
-        KvStoreError::IoError(e)
-    }
-}
-
-impl From<serde_json::Error> for KvStoreError {
-    fn from(e: serde_json::Error) -> Self {
-        KvStoreError::SerDeError(e)
-    }
-}
 
 #[derive(Debug, Serialize, Deserialize)]
 enum CommandType {
@@ -45,8 +22,6 @@ enum Command {
     Set { key: String, value: String },
     Remove { key: String },
 }
-
-pub type Result<T> = result::Result<T, KvStoreError>;
 
 pub struct KvStore {
     path: PathBuf,
@@ -139,7 +114,7 @@ impl KvStore {
 
     pub fn remove(&mut self, key: String) -> Result<()> {
         if !self.index_map.contains_key(&key) {
-            Err(KvStoreError::KeyNotFound)
+            Err(KvsError::KeyNotFound)
         } else {
             serde_json::to_writer(&mut self.writer, &Command::Remove { key: key.clone() })?;
             self.writer.flush()?;
