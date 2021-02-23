@@ -1,4 +1,4 @@
-use crate::{KvsError, Result};
+use crate::{KvsEngine, KvsError, Result};
 use io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write};
 use serde::{Deserialize, Serialize};
 use std::ffi::OsStr;
@@ -39,33 +39,8 @@ struct CommandPos {
     len: u64,
 }
 
-impl KvStore {
-    pub fn open(path: impl Into<PathBuf>) -> Result<KvStore> {
-        let path = path.into();
-        fs::create_dir_all(&path)?;
-        let mut readers = HashMap::new();
-        let mut index_map = HashMap::new();
-        let log_list = get_log_list(&path)?;
-        let mut uncompacted = 0u64;
-        for &log_id in &log_list {
-            let mut reader = Reader::new(File::open(get_log_path(&path, log_id))?)?;
-            uncompacted += load_log(log_id, &mut reader, &mut index_map)?;
-            readers.insert(log_id, reader);
-        }
-        let log_id = *log_list.last().unwrap_or(&0);
-        let writer = new_log(&path, log_id, &mut readers)?;
-
-        Ok(KvStore {
-            path,
-            readers,
-            index_map,
-            uncompacted,
-            writer,
-            log_id,
-        })
-    }
-
-    pub fn set(&mut self, key: String, value: String) -> Result<()> {
+impl KvsEngine for KvStore {
+    fn set(&mut self, key: String, value: String) -> Result<()> {
         let pos = self.writer.pos;
         serde_json::to_writer(
             &mut self.writer,
@@ -93,7 +68,7 @@ impl KvStore {
         Ok(())
     }
 
-    pub fn get(&mut self, key: String) -> Result<Option<String>> {
+    fn get(&mut self, key: String) -> Result<Option<String>> {
         match self.index_map.get(&key) {
             Some(cmd_pos) => {
                 if let Some(reader) = self.readers.get_mut(&cmd_pos.log_id) {
@@ -112,7 +87,7 @@ impl KvStore {
         }
     }
 
-    pub fn remove(&mut self, key: String) -> Result<()> {
+    fn remove(&mut self, key: String) -> Result<()> {
         if !self.index_map.contains_key(&key) {
             Err(KvsError::KeyNotFound)
         } else {
@@ -123,6 +98,33 @@ impl KvStore {
             }
             Ok(())
         }
+    }
+}
+
+impl KvStore {
+    pub fn open(path: impl Into<PathBuf>) -> Result<Self> {
+        let path = path.into();
+        fs::create_dir_all(&path)?;
+        let mut readers = HashMap::new();
+        let mut index_map = HashMap::new();
+        let log_list = get_log_list(&path)?;
+        let mut uncompacted = 0u64;
+        for &log_id in &log_list {
+            let mut reader = Reader::new(File::open(get_log_path(&path, log_id))?)?;
+            uncompacted += load_log(log_id, &mut reader, &mut index_map)?;
+            readers.insert(log_id, reader);
+        }
+        let log_id = *log_list.last().unwrap_or(&0);
+        let writer = new_log(&path, log_id, &mut readers)?;
+
+        Ok(KvStore {
+            path,
+            readers,
+            index_map,
+            uncompacted,
+            writer,
+            log_id,
+        })
     }
 
     fn compact(&mut self) -> Result<()> {

@@ -1,5 +1,5 @@
 use clap::{AppSettings, Clap};
-use kvs::Result;
+use kvs::{KvsClient, Result};
 use std::{env, net::SocketAddr, process::exit};
 
 #[derive(Clap)]
@@ -57,9 +57,22 @@ fn parse_args() -> Opt {
 
 fn dispatch(opt: Opt) -> Result<()> {
     match opt.cmd {
-        Command::Set { key, value, addr } => {}
-        Command::Get { key, addr } => {}
-        Command::Remove { key, addr } => {}
+        Command::Set { key, value, addr } => {
+            let mut client = KvsClient::new(addr)?;
+            client.set(key, value)?;
+        }
+        Command::Get { key, addr } => {
+            let mut client = KvsClient::new(addr)?;
+            if let Some(value) = client.get(key)? {
+                println!("{}", value);
+            } else {
+                println!("Key not found");
+            }
+        }
+        Command::Remove { key, addr } => {
+            let mut client = KvsClient::new(addr)?;
+            client.remove(key)?;
+        }
     };
     Ok(())
 }
