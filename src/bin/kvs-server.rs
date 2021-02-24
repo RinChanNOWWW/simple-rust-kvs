@@ -1,7 +1,12 @@
 use clap::Clap;
 use core::fmt;
-use kvs::{KvStore, KvsEngine, KvsServer, Result, SledKvsEngine};
+#[allow(unused)]
+use kvs::{
+    thread_pool::{NaiveThreadPool, RayonThreadPool, SharedQueueThreadPool, ThreadPool},
+    KvStore, KvsEngine, KvsServer, Result, SledKvsEngine,
+};
 use log::{error, info, warn};
+use num_cpus;
 use std::{
     env,
     fmt::{Display, Formatter},
@@ -106,14 +111,17 @@ fn run(opt: Opt) -> Result<()> {
     info!("Listening to {}.", opt.addr);
     info!("Choosen storage engine: {}.", opt.engine);
     fs::write(env::current_dir()?.join("engine"), opt.engine.to_string())?;
+    let pool = SharedQueueThreadPool::new(num_cpus::get() as u32)?;
     match opt.engine {
-        SupportEngines::kvs => start_engine(KvStore::open(env::current_dir()?)?, opt.addr),
-        SupportEngines::sled => start_engine(SledKvsEngine::open(env::current_dir()?)?, opt.addr),
+        SupportEngines::kvs => start_engine(KvStore::open(env::current_dir()?)?, pool, opt.addr),
+        SupportEngines::sled => {
+            start_engine(SledKvsEngine::open(env::current_dir()?)?, pool, opt.addr)
+        }
     }
 }
 
-fn start_engine<E: KvsEngine>(engine: E, addr: SocketAddr) -> Result<()> {
-    let mut server = KvsServer::new(engine);
+fn start_engine<E: KvsEngine, P: ThreadPool>(engine: E, pool: P, addr: SocketAddr) -> Result<()> {
+    let mut server = KvsServer::new(engine, pool);
     server.run(addr)
 }
 

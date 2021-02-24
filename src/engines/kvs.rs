@@ -2,6 +2,7 @@ use crate::{KvsEngine, KvsError, Result};
 use io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write};
 use serde::{Deserialize, Serialize};
 use std::ffi::OsStr;
+use std::sync::{Arc, Mutex};
 use std::{collections::HashMap, io, path::Path, usize};
 use std::{
     fs,
@@ -23,7 +24,31 @@ enum Command {
     Remove { key: String },
 }
 
-pub struct KvStore {
+#[derive(Clone)]
+pub struct KvStore(Arc<Mutex<KvStoreInner>>);
+
+impl KvStore {
+    pub fn open(path: impl Into<PathBuf>) -> Result<Self> {
+        let kv = KvStoreInner::open(path)?;
+        Ok(KvStore(Arc::new(Mutex::new(kv))))
+    }
+}
+
+impl KvsEngine for KvStore {
+    fn get(&self, key: String) -> Result<Option<String>> {
+        self.0.lock().unwrap().get(key)
+    }
+
+    fn set(&self, key: String, value: String) -> Result<()> {
+        self.0.lock().unwrap().set(key, value)
+    }
+
+    fn remove(&self, key: String) -> Result<()> {
+        self.0.lock().unwrap().remove(key)
+    }
+}
+
+struct KvStoreInner {
     path: PathBuf,
     index_map: HashMap<String, CommandPos>,
     log_id: u64,
@@ -39,7 +64,7 @@ struct CommandPos {
     len: u64,
 }
 
-impl KvsEngine for KvStore {
+impl KvStoreInner {
     fn set(&mut self, key: String, value: String) -> Result<()> {
         let pos = self.writer.pos;
         serde_json::to_writer(
@@ -99,10 +124,7 @@ impl KvsEngine for KvStore {
             Ok(())
         }
     }
-}
-
-impl KvStore {
-    pub fn open(path: impl Into<PathBuf>) -> Result<Self> {
+    fn open(path: impl Into<PathBuf>) -> Result<Self> {
         let path = path.into();
         fs::create_dir_all(&path)?;
         let mut readers = HashMap::new();
@@ -117,7 +139,7 @@ impl KvStore {
         let log_id = *log_list.last().unwrap_or(&0);
         let writer = new_log(&path, log_id, &mut readers)?;
 
-        Ok(KvStore {
+        Ok(KvStoreInner {
             path,
             readers,
             index_map,
