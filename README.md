@@ -14,7 +14,8 @@ My implementation of [PingCAP's PNA Rust Lesson plan](https://github.com/pingcap
 
   - [x] Make kvs-engine be able to run in multi-thread.
   - [x] Convert kvs-server to a multi-thread server with a self-made thread pool.
-  - [ ] Optimize kvs-engine.
+  - [x] Seperate kvs-engine into reader and writer.
+  - [x] Make kvs-engine's read lock-free. Use crossbeam-skiplist.
   - [ ] Write multi-thread benchmarks.
 
 - Project 5

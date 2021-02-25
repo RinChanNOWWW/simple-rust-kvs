@@ -13,6 +13,8 @@ pub enum KvsError {
     SledError(sled::Error),
     #[fail(display = "From utf8 error: {}", _0)]
     FromUtf8Error(string::FromUtf8Error),
+    #[fail(display = "Wrong command")]
+    WrongCommandError,
     #[fail(display = "Other error: {}", _0)]
     OtherError(String),
 }
