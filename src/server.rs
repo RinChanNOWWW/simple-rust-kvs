@@ -8,24 +8,48 @@ use crate::{
     KvsEngine,
 };
 use log::error;
+use std::sync::atomic::Ordering;
+use std::sync::Arc;
 use std::{
     io::{BufReader, BufWriter},
     net::{TcpListener, TcpStream, ToSocketAddrs},
+    sync::atomic::AtomicBool,
 };
 
 pub struct KvsServer<E: KvsEngine, P: ThreadPool> {
     engine: E,
     pool: P,
+    state: Arc<AtomicBool>,
 }
 
 impl<E: KvsEngine, P: ThreadPool> KvsServer<E, P> {
     pub fn new(engine: E, pool: P) -> KvsServer<E, P> {
-        KvsServer { engine, pool }
+        KvsServer {
+            engine,
+            pool,
+            state: Arc::new(AtomicBool::new(false)),
+        }
+    }
+
+    pub fn new_with_state(engine: E, pool: P) -> (KvsServer<E, P>, Arc<AtomicBool>) {
+        let state = Arc::new(AtomicBool::new(false));
+        (
+            KvsServer {
+                engine,
+                pool,
+                state: Arc::clone(&state),
+            },
+            state,
+        )
     }
 
     pub fn run<A: ToSocketAddrs>(&mut self, addr: A) -> Result<()> {
         let listener = TcpListener::bind(addr)?;
+        self.state.store(true, Ordering::SeqCst);
         for stream in listener.incoming() {
+            if !self.state.load(Ordering::SeqCst) {
+                break;
+            }
             let engine = self.engine.clone();
             self.pool.spawn(move || match stream {
                 Ok(s) => {
@@ -39,6 +63,10 @@ impl<E: KvsEngine, P: ThreadPool> KvsServer<E, P> {
             })
         }
         Ok(())
+    }
+
+    pub fn stop(&mut self) {
+        self.state.store(false, Ordering::SeqCst);
     }
 }
 

@@ -30,4 +30,4 @@ tempfile = "3.0.7"
 walkdir = "2.2.7"
 [[bench]]
 harness = false
-name = "engine_benches"
+name = "concurrency_benches"
