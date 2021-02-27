@@ -64,10 +64,6 @@ impl<E: KvsEngine, P: ThreadPool> KvsServer<E, P> {
         }
         Ok(())
     }
-
-    pub fn stop(&mut self) {
-        self.state.store(false, Ordering::SeqCst);
-    }
 }
 
 fn handle_connection<E: KvsEngine>(stream: TcpStream, engine: E) -> Result<()> {
@@ -100,4 +96,9 @@ fn handle_connection<E: KvsEngine>(stream: TcpStream, engine: E) -> Result<()> {
         }
     }
     Ok(())
+}
+
+pub fn stop_server<A: ToSocketAddrs>(state: Arc<AtomicBool>, addr: A) {
+    state.store(false, Ordering::SeqCst);
+    TcpStream::connect(addr).unwrap();
 }
