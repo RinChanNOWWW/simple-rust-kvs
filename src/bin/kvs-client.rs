@@ -55,30 +55,31 @@ fn parse_args() -> Opt {
     return opt;
 }
 
-fn dispatch(opt: Opt) -> Result<()> {
+async fn dispatch(opt: Opt) -> Result<()> {
     match opt.cmd {
         Command::Set { key, value, addr } => {
-            let client = KvsClient::connect(addr)?;
-            client.set(key, value)?;
+            let client = KvsClient::connect(addr).await?;
+            client.set(key, value).await?;
         }
         Command::Get { key, addr } => {
-            let client = KvsClient::connect(addr)?;
-            if let Some(value) = client.get(key)? {
+            let client = KvsClient::connect(addr).await?;
+            if let Some(value) = client.get(key).await? {
                 println!("{}", value);
             } else {
                 println!("Key not found");
             }
         }
         Command::Remove { key, addr } => {
-            let client = KvsClient::connect(addr)?;
-            client.remove(key)?;
+            let client = KvsClient::connect(addr).await?;
+            client.remove(key).await?;
         }
     };
     Ok(())
 }
 
-fn main() {
-    if let Err(e) = dispatch(parse_args()) {
+#[tokio::main]
+async fn main() {
+    if let Err(e) = dispatch(parse_args()).await {
         eprintln!("{}", e);
         exit(1);
     }

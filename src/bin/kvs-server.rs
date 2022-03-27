@@ -1,12 +1,7 @@
 use clap::Clap;
 use core::fmt;
-#[allow(unused)]
-use kvs::{
-    thread_pool::{NaiveThreadPool, RayonThreadPool, SharedQueueThreadPool, ThreadPool},
-    KvStore, KvsEngine, KvsServer, Result, SledKvsEngine,
-};
+use kvs::{KvStore, KvsEngine, KvsServer, Result, SledKvsEngine};
 use log::{error, info, warn};
-use num_cpus;
 use std::{
     env,
     fmt::{Display, Formatter},
@@ -82,7 +77,8 @@ struct Opt {
     engine: SupportEngines,
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     env_logger::builder()
         .filter_level(log::LevelFilter::Info)
         .init();
@@ -100,29 +96,28 @@ fn main() {
         }
         Ok(None) => {}
     }
-    if let Err(e) = run(opt) {
+    if let Err(e) = run(opt).await {
         error!("{}", e);
         exit(1);
     }
 }
 
-fn run(opt: Opt) -> Result<()> {
+async fn run(opt: Opt) -> Result<()> {
     info!("Server[{}] start.", env!("CARGO_PKG_VERSION"));
     info!("Listening to {}.", opt.addr);
     info!("Choosen storage engine: {}.", opt.engine);
     fs::write(env::current_dir()?.join("engine"), opt.engine.to_string())?;
-    let pool = SharedQueueThreadPool::new(num_cpus::get() as u32)?;
     match opt.engine {
-        SupportEngines::kvs => start_engine(KvStore::open(env::current_dir()?)?, pool, opt.addr),
+        SupportEngines::kvs => start_engine(KvStore::open(env::current_dir()?)?, opt.addr).await,
         SupportEngines::sled => {
-            start_engine(SledKvsEngine::open(env::current_dir()?)?, pool, opt.addr)
+            start_engine(SledKvsEngine::open(env::current_dir()?)?, opt.addr).await
         }
     }
 }
 
-fn start_engine<E: KvsEngine, P: ThreadPool>(engine: E, pool: P, addr: SocketAddr) -> Result<()> {
-    let mut server = KvsServer::new(engine, pool);
-    server.run(addr)
+async fn start_engine<E: KvsEngine>(engine: E, addr: SocketAddr) -> Result<()> {
+    let mut server = KvsServer::new(engine);
+    server.run(addr).await
 }
 
 fn check_current_engine() -> Result<Option<SupportEngines>> {
