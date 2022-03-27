@@ -1,5 +1,5 @@
 use crate::{
-    network::{GetResponse, RemoveResponse, Request, SetResponse},
+    network::{Request, Response},
     KvsError, Result,
 };
 use serde::Deserialize;
@@ -15,7 +15,7 @@ pub struct KvsClient {
 }
 
 impl KvsClient {
-    pub fn new<A: ToSocketAddrs>(addr: A) -> Result<Self> {
+    pub fn connect<A: ToSocketAddrs>(addr: A) -> Result<Self> {
         let stream = TcpStream::connect(addr)?;
 
         Ok(KvsClient {
@@ -24,31 +24,34 @@ impl KvsClient {
         })
     }
 
-    pub fn get(&mut self, key: String) -> Result<Option<String>> {
-        serde_json::to_writer(&mut self.writer, &Request::Get { key })?;
-        self.writer.flush()?;
-        let resp: GetResponse = GetResponse::deserialize(&mut self.reader)?;
+    pub fn get(mut self, key: String) -> Result<Option<String>> {
+        let resp = self.send_data(Request::Get { key })?;
         match resp {
-            GetResponse::Ok(res) => Ok(res),
-            GetResponse::Err(e) => Err(KvsError::OtherError(e)),
+            Response::Get(s) => Ok(s),
+            Response::Err(e) => Err(KvsError::OtherError(e)),
+            _ => Err(KvsError::WrongCommandError),
         }
     }
-    pub fn set(&mut self, key: String, value: String) -> Result<()> {
-        serde_json::to_writer(&mut self.writer, &Request::Set { key, value })?;
-        self.writer.flush()?;
-        let resp = SetResponse::deserialize(&mut self.reader)?;
+    pub fn set(mut self, key: String, value: String) -> Result<()> {
+        let resp = self.send_data(Request::Set { key, value })?;
         match resp {
-            SetResponse::Ok(()) => Ok(()),
-            SetResponse::Err(e) => Err(KvsError::OtherError(e)),
+            Response::Set => Ok(()),
+            Response::Err(e) => Err(KvsError::OtherError(e)),
+            _ => Err(KvsError::WrongCommandError),
         }
     }
-    pub fn remove(&mut self, key: String) -> Result<()> {
-        serde_json::to_writer(&mut self.writer, &Request::Remove { key })?;
-        self.writer.flush()?;
-        let resp = RemoveResponse::deserialize(&mut self.reader)?;
+    pub fn remove(mut self, key: String) -> Result<()> {
+        let resp = self.send_data(Request::Remove { key })?;
         match resp {
-            RemoveResponse::Ok(()) => Ok(()),
-            RemoveResponse::Err(e) => Err(KvsError::OtherError(e)),
+            Response::Remove => Ok(()),
+            Response::Err(e) => Err(KvsError::OtherError(e)),
+            _ => Err(KvsError::WrongCommandError),
         }
+    }
+
+    fn send_data(&mut self, req: Request) -> Result<Response> {
+        serde_json::to_writer(&mut self.writer, &req)?;
+        self.writer.flush()?;
+        Ok(Response::deserialize(&mut self.reader)?)
     }
 }

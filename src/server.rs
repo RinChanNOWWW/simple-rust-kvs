@@ -1,12 +1,8 @@
 use crate::{
-    network::{send_data, GetResponse, RemoveResponse},
-    thread_pool::ThreadPool,
-    Result,
-};
-use crate::{
-    network::{Request, SetResponse},
+    network::{send_data, Request, Response},
     KvsEngine,
 };
+use crate::{thread_pool::ThreadPool, Result};
 use log::error;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
@@ -74,24 +70,24 @@ fn handle_connection<E: KvsEngine>(stream: TcpStream, engine: E) -> Result<()> {
         match req? {
             Request::Get { key } => {
                 let resp = match engine.get(key) {
-                    Ok(value) => GetResponse::Ok(value),
-                    Err(e) => GetResponse::Err(e.to_string()),
+                    Ok(value) => Response::Get(value),
+                    Err(e) => Response::Err(e.to_string()),
                 };
-                send_data::<GetResponse>(writer, resp)?;
+                send_data::<Response>(writer, resp)?;
             }
             Request::Set { key, value } => {
                 let resp = match engine.set(key, value) {
-                    Ok(()) => SetResponse::Ok(()),
-                    Err(e) => SetResponse::Err(e.to_string()),
+                    Ok(()) => Response::Set,
+                    Err(e) => Response::Err(e.to_string()),
                 };
-                send_data::<SetResponse>(writer, resp)?;
+                send_data::<Response>(writer, resp)?;
             }
             Request::Remove { key } => {
                 let resp = match engine.remove(key) {
-                    Ok(()) => RemoveResponse::Ok(()),
-                    Err(e) => RemoveResponse::Err(e.to_string()),
+                    Ok(()) => Response::Remove,
+                    Err(e) => Response::Err(e.to_string()),
                 };
-                send_data::<RemoveResponse>(writer, resp)?;
+                send_data::<Response>(writer, resp)?;
             }
         }
     }

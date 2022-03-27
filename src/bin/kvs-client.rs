@@ -58,11 +58,11 @@ fn parse_args() -> Opt {
 fn dispatch(opt: Opt) -> Result<()> {
     match opt.cmd {
         Command::Set { key, value, addr } => {
-            let mut client = KvsClient::new(addr)?;
+            let client = KvsClient::connect(addr)?;
             client.set(key, value)?;
         }
         Command::Get { key, addr } => {
-            let mut client = KvsClient::new(addr)?;
+            let client = KvsClient::connect(addr)?;
             if let Some(value) = client.get(key)? {
                 println!("{}", value);
             } else {
@@ -70,7 +70,7 @@ fn dispatch(opt: Opt) -> Result<()> {
             }
         }
         Command::Remove { key, addr } => {
-            let mut client = KvsClient::new(addr)?;
+            let client = KvsClient::connect(addr)?;
             client.remove(key)?;
         }
     };

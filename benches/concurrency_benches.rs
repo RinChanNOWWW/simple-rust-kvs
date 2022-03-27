@@ -52,7 +52,7 @@ fn write_bench(c: &mut Criterion) {
                         let key = keys[i].clone();
                         let thread_num = thread_num.clone();
                         thread::spawn(move || {
-                            match KvsClient::new(format!("127.0.0.1:888{}", thread_num)) {
+                            match KvsClient::connect(format!("127.0.0.1:888{}", thread_num)) {
                                 Ok(mut client) => {
                                     if let Err(e) = client.set(key, "value".to_owned()) {
                                         eprintln!("{}", e);
@@ -91,7 +91,7 @@ fn write_bench(c: &mut Criterion) {
                         let key = keys[i].clone();
                         let thread_num = thread_num.clone();
                         thread::spawn(move || {
-                            match KvsClient::new(format!("127.0.0.1:777{}", thread_num)) {
+                            match KvsClient::connect(format!("127.0.0.1:777{}", thread_num)) {
                                 Ok(mut client) => {
                                     if let Err(e) = client.set(key, "value".to_owned()) {
                                         eprintln!("{}", e);
@@ -130,7 +130,7 @@ fn write_bench(c: &mut Criterion) {
                         let key = keys[i].clone();
                         let thread_num = thread_num.clone();
                         thread::spawn(move || {
-                            match KvsClient::new(format!("127.0.0.1:999{}", thread_num)) {
+                            match KvsClient::connect(format!("127.0.0.1:999{}", thread_num)) {
                                 Ok(mut client) => {
                                     if let Err(e) = client.set(key, "value".to_owned()) {
                                         eprintln!("{}", e);
@@ -194,7 +194,7 @@ fn read_bench(c: &mut Criterion) {
                         let value = values[i].clone();
                         let thread_num = thread_num.clone();
                         thread::spawn(move || {
-                            match KvsClient::new(format!("127.0.0.1:888{}", thread_num)) {
+                            match KvsClient::connect(format!("127.0.0.1:888{}", thread_num)) {
                                 Ok(mut client) => match client.get(key) {
                                     Err(e) => {
                                         eprintln!("{}", e);
@@ -234,7 +234,7 @@ fn read_bench(c: &mut Criterion) {
                         let value = values[i].clone();
                         let thread_num = thread_num.clone();
                         thread::spawn(move || {
-                            match KvsClient::new(format!("127.0.0.1:777{}", thread_num)) {
+                            match KvsClient::connect(format!("127.0.0.1:777{}", thread_num)) {
                                 Ok(mut client) => match client.get(key) {
                                     Err(e) => {
                                         eprintln!("{}", e);
@@ -274,7 +274,7 @@ fn read_bench(c: &mut Criterion) {
                         let value = values[i].clone();
                         let thread_num = thread_num.clone();
                         thread::spawn(move || {
-                            match KvsClient::new(format!("127.0.0.1:999{}", thread_num)) {
+                            match KvsClient::connect(format!("127.0.0.1:999{}", thread_num)) {
                                 Ok(mut client) => match client.get(key) {
                                     Err(e) => {
                                         eprintln!("{}", e);
