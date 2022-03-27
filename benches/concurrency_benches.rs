@@ -6,8 +6,8 @@ use kvs::{
     KvStore, KvsClient, KvsEngine, KvsServer, SledKvsEngine,
 };
 use rand::Rng;
+use std::thread;
 use std::usize;
-use std::{sync::atomic::Ordering, thread};
 use tempfile::TempDir;
 
 const ASCII_START: u8 = 33;

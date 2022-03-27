@@ -27,7 +27,6 @@ enum Command {
 
 #[derive(Clone)]
 pub struct KvStore {
-    path: Arc<PathBuf>,
     index_map: Arc<SkipMap<String, CommandPos>>,
     reader: KvStoreReader,
     writer: Arc<Mutex<KvStoreWriter>>,
@@ -63,7 +62,6 @@ impl KvStore {
         }));
 
         Ok(KvStore {
-            path,
             reader,
             index_map,
             writer,
