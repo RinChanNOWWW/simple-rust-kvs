@@ -25,17 +25,6 @@ impl<E: KvsEngine> KvsServer<E> {
         }
     }
 
-    pub fn new_with_state(engine: E) -> (KvsServer<E>, Arc<AtomicBool>) {
-        let state = Arc::new(AtomicBool::new(false));
-        (
-            KvsServer {
-                engine,
-                state: Arc::clone(&state),
-            },
-            state,
-        )
-    }
-
     pub async fn run<A: ToSocketAddrs>(&mut self, addr: A) -> Result<()> {
         let listener = TcpListener::bind(addr).await?;
         self.state.store(true, Ordering::SeqCst);

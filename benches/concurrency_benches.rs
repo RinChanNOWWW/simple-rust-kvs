@@ -1,9 +1,9 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use crossbeam::sync::WaitGroup;
 use kvs::{
-    stop_server,
+    sync_client, sync_server,
     thread_pool::{RayonThreadPool, SharedQueueThreadPool, ThreadPool},
-    KvStore, KvsClient, KvsEngine, KvsServer, SledKvsEngine,
+    KvStore, KvsEngine, SledKvsEngine,
 };
 use rand::Rng;
 use std::thread;
@@ -32,7 +32,7 @@ fn write_bench(c: &mut Criterion) {
         println!("thread num {} start", thread_num);
         // KvStore with SharedQueueThreadPool
         let temp_dir = TempDir::new().unwrap();
-        let (mut server, server_state) = KvsServer::new_with_state(
+        let (mut server, server_state) = sync_server::KvsServer::new_with_state(
             KvStore::open(temp_dir.path()).unwrap(),
             SharedQueueThreadPool::new(thread_num).unwrap(),
         );
@@ -42,7 +42,7 @@ fn write_bench(c: &mut Criterion) {
             },
         );
         group.bench_with_input(
-            BenchmarkId::new("write_shared_kvstore", thread_num),
+            BenchmarkId::new("sync_write_shared_kvstore", thread_num),
             &thread_num,
             |b, &thread_num| {
                 b.iter(|| {
@@ -52,7 +52,10 @@ fn write_bench(c: &mut Criterion) {
                         let key = keys[i].clone();
                         let thread_num = thread_num.clone();
                         thread::spawn(move || {
-                            match KvsClient::connect(format!("127.0.0.1:888{}", thread_num)) {
+                            match sync_client::KvsClient::connect(format!(
+                                "127.0.0.1:888{}",
+                                thread_num
+                            )) {
                                 Ok(mut client) => {
                                     if let Err(e) = client.set(key, "value".to_owned()) {
                                         eprintln!("{}", e);
@@ -68,10 +71,10 @@ fn write_bench(c: &mut Criterion) {
                 });
             },
         );
-        stop_server(server_state, format!("127.0.0.1:888{}", thread_num));
+        sync_server::stop_server(server_state, format!("127.0.0.1:888{}", thread_num));
         // KvStore with Rayon
         let temp_dir = TempDir::new().unwrap();
-        let (mut server, server_state) = KvsServer::new_with_state(
+        let (mut server, server_state) = sync_server::KvsServer::new_with_state(
             KvStore::open(temp_dir.path()).unwrap(),
             RayonThreadPool::new(thread_num).unwrap(),
         );
@@ -81,7 +84,7 @@ fn write_bench(c: &mut Criterion) {
             },
         );
         group.bench_with_input(
-            BenchmarkId::new("write_rayon_kvstore", thread_num),
+            BenchmarkId::new("sync_write_rayon_kvstore", thread_num),
             &thread_num,
             |b, &thread_num| {
                 b.iter(|| {
@@ -91,7 +94,10 @@ fn write_bench(c: &mut Criterion) {
                         let key = keys[i].clone();
                         let thread_num = thread_num.clone();
                         thread::spawn(move || {
-                            match KvsClient::connect(format!("127.0.0.1:777{}", thread_num)) {
+                            match sync_client::KvsClient::connect(format!(
+                                "127.0.0.1:777{}",
+                                thread_num
+                            )) {
                                 Ok(mut client) => {
                                     if let Err(e) = client.set(key, "value".to_owned()) {
                                         eprintln!("{}", e);
@@ -107,10 +113,10 @@ fn write_bench(c: &mut Criterion) {
                 });
             },
         );
-        stop_server(server_state, format!("127.0.0.1:777{}", thread_num));
+        sync_server::stop_server(server_state, format!("127.0.0.1:777{}", thread_num));
         // Sled with Rayon
         let temp_dir = TempDir::new().unwrap();
-        let (mut server, server_state) = KvsServer::new_with_state(
+        let (mut server, server_state) = sync_server::KvsServer::new_with_state(
             SledKvsEngine::open(temp_dir.path()).unwrap(),
             RayonThreadPool::new(thread_num).unwrap(),
         );
@@ -120,7 +126,7 @@ fn write_bench(c: &mut Criterion) {
             },
         );
         group.bench_with_input(
-            BenchmarkId::new("write_rayon_sled", thread_num),
+            BenchmarkId::new("sync_write_rayon_sled", thread_num),
             &thread_num,
             |b, &thread_num| {
                 b.iter(|| {
@@ -130,7 +136,10 @@ fn write_bench(c: &mut Criterion) {
                         let key = keys[i].clone();
                         let thread_num = thread_num.clone();
                         thread::spawn(move || {
-                            match KvsClient::connect(format!("127.0.0.1:999{}", thread_num)) {
+                            match sync_client::KvsClient::connect(format!(
+                                "127.0.0.1:999{}",
+                                thread_num
+                            )) {
                                 Ok(mut client) => {
                                     if let Err(e) = client.set(key, "value".to_owned()) {
                                         eprintln!("{}", e);
@@ -146,7 +155,7 @@ fn write_bench(c: &mut Criterion) {
                 });
             },
         );
-        stop_server(server_state, format!("127.0.0.1:999{}", thread_num));
+        sync_server::stop_server(server_state, format!("127.0.0.1:999{}", thread_num));
     }
     group.finish();
 }
@@ -175,15 +184,17 @@ fn read_bench(c: &mut Criterion) {
         }
         println!("thread num {} start", thread_num);
         // KvStore with SharedQueueThreadPool
-        let (mut server, server_state) =
-            KvsServer::new_with_state(engine1, SharedQueueThreadPool::new(thread_num).unwrap());
+        let (mut server, server_state) = sync_server::KvsServer::new_with_state(
+            engine1,
+            SharedQueueThreadPool::new(thread_num).unwrap(),
+        );
         thread::spawn(
             move || {
                 while let Err(..) = server.run(format!("127.0.0.1:888{}", thread_num)) {}
             },
         );
         group.bench_with_input(
-            BenchmarkId::new("read_shared_kvstore", thread_num),
+            BenchmarkId::new("sync_read_shared_kvstore", thread_num),
             &thread_num,
             |b, &thread_num| {
                 b.iter(|| {
@@ -194,7 +205,10 @@ fn read_bench(c: &mut Criterion) {
                         let value = values[i].clone();
                         let thread_num = thread_num.clone();
                         thread::spawn(move || {
-                            match KvsClient::connect(format!("127.0.0.1:888{}", thread_num)) {
+                            match sync_client::KvsClient::connect(format!(
+                                "127.0.0.1:888{}",
+                                thread_num
+                            )) {
                                 Ok(mut client) => match client.get(key) {
                                     Err(e) => {
                                         eprintln!("{}", e);
@@ -213,17 +227,19 @@ fn read_bench(c: &mut Criterion) {
                 });
             },
         );
-        stop_server(server_state, format!("127.0.0.1:888{}", thread_num));
+        sync_server::stop_server(server_state, format!("127.0.0.1:888{}", thread_num));
         // KvStore with Rayon
-        let (mut server, server_state) =
-            KvsServer::new_with_state(engine2, RayonThreadPool::new(thread_num).unwrap());
+        let (mut server, server_state) = sync_server::KvsServer::new_with_state(
+            engine2,
+            RayonThreadPool::new(thread_num).unwrap(),
+        );
         thread::spawn(
             move || {
                 while let Err(..) = server.run(format!("127.0.0.1:777{}", thread_num)) {}
             },
         );
         group.bench_with_input(
-            BenchmarkId::new("read_rayon_kvstore", thread_num),
+            BenchmarkId::new("sync_read_rayon_kvstore", thread_num),
             &thread_num,
             |b, &thread_num| {
                 b.iter(|| {
@@ -234,7 +250,10 @@ fn read_bench(c: &mut Criterion) {
                         let value = values[i].clone();
                         let thread_num = thread_num.clone();
                         thread::spawn(move || {
-                            match KvsClient::connect(format!("127.0.0.1:777{}", thread_num)) {
+                            match sync_client::KvsClient::connect(format!(
+                                "127.0.0.1:777{}",
+                                thread_num
+                            )) {
                                 Ok(mut client) => match client.get(key) {
                                     Err(e) => {
                                         eprintln!("{}", e);
@@ -253,17 +272,19 @@ fn read_bench(c: &mut Criterion) {
                 });
             },
         );
-        stop_server(server_state, format!("127.0.0.1:777{}", thread_num));
+        sync_server::stop_server(server_state, format!("127.0.0.1:777{}", thread_num));
         // Sled with Rayon
-        let (mut server, server_state) =
-            KvsServer::new_with_state(engine3, RayonThreadPool::new(thread_num).unwrap());
+        let (mut server, server_state) = sync_server::KvsServer::new_with_state(
+            engine3,
+            RayonThreadPool::new(thread_num).unwrap(),
+        );
         thread::spawn(
             move || {
                 while let Err(..) = server.run(format!("127.0.0.1:999{}", thread_num)) {}
             },
         );
         group.bench_with_input(
-            BenchmarkId::new("read_rayon_sled", thread_num),
+            BenchmarkId::new("sync_read_rayon_sled", thread_num),
             &thread_num,
             |b, &thread_num| {
                 b.iter(|| {
@@ -274,7 +295,10 @@ fn read_bench(c: &mut Criterion) {
                         let value = values[i].clone();
                         let thread_num = thread_num.clone();
                         thread::spawn(move || {
-                            match KvsClient::connect(format!("127.0.0.1:999{}", thread_num)) {
+                            match sync_client::KvsClient::connect(format!(
+                                "127.0.0.1:999{}",
+                                thread_num
+                            )) {
                                 Ok(mut client) => match client.get(key) {
                                     Err(e) => {
                                         eprintln!("{}", e);
@@ -293,7 +317,7 @@ fn read_bench(c: &mut Criterion) {
                 });
             },
         );
-        stop_server(server_state, format!("127.0.0.1:999{}", thread_num));
+        sync_server::stop_server(server_state, format!("127.0.0.1:999{}", thread_num));
     }
     group.finish();
 }

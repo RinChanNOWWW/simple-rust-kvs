@@ -1,6 +1,6 @@
 use clap::Clap;
 use core::fmt;
-use kvs::{KvStore, KvsEngine, KvsServer, Result, SledKvsEngine};
+use kvs::{async_server, KvStore, KvsEngine, Result, SledKvsEngine};
 use log::{error, info, warn};
 use std::{
     env,
@@ -116,7 +116,7 @@ async fn run(opt: Opt) -> Result<()> {
 }
 
 async fn start_engine<E: KvsEngine>(engine: E, addr: SocketAddr) -> Result<()> {
-    let mut server = KvsServer::new(engine);
+    let mut server = async_server::KvsServer::new(engine);
     server.run(addr).await
 }
 

@@ -5,7 +5,7 @@ mod network;
 mod server;
 pub mod thread_pool;
 
-pub use client::KvsClient;
+pub use client::{async_client, sync_client};
 pub use engines::{KvStore, KvsEngine, SledKvsEngine};
 pub use errors::{KvsError, Result};
-pub use server::{stop_server, KvsServer};
+pub use server::{async_server, sync_server};
