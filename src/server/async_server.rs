@@ -43,6 +43,17 @@ impl<E: KvsEngine> KvsServer<E> {
         }
         Ok(())
     }
+
+    pub fn new_with_state(engine: E) -> (KvsServer<E>, Arc<AtomicBool>) {
+        let state = Arc::new(AtomicBool::new(false));
+        (
+            KvsServer {
+                engine,
+                state: Arc::clone(&state),
+            },
+            state,
+        )
+    }
 }
 
 async fn handle_connection<E: KvsEngine>(mut stream: TcpStream, engine: E) -> Result<()> {

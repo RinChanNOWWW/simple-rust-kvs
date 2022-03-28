@@ -33,5 +33,6 @@ My implementation of [PingCAP's PNA Rust Lesson plan](https://github.com/pingcap
 - Project 5
 
   - [x] Turn networking into async with tokio.
+  - [x] Add benchmarks for async server (TBD: why the sync results are much different from the old ones).
   - [ ] Turn engine I/O operation into async.
 
